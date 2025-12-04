@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once 'config.php'; // 1. Load config FIRST
+session_start();           // 2. Then start session
 
 // Sample car data
 $cars = [
@@ -16,7 +17,6 @@ $cars = [
 $isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['fullname']);
 $fullname = $isLoggedIn ? htmlspecialchars($_SESSION['fullname']) : '';
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,13 +25,7 @@ $fullname = $isLoggedIn ? htmlspecialchars($_SESSION['fullname']) : '';
     <title>GingerRental - Our Fleet</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* FULL WIDTH NAVBAR FIX (Same as index.php) */
-        .navbar {
-            max-width: 100% !important; 
-            padding-left: 2rem;
-            padding-right: 2rem;
-            box-sizing: border-box;
-        }
+        .navbar { max-width: 100% !important; padding-left: 2rem; padding-right: 2rem; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -57,16 +51,13 @@ $fullname = $isLoggedIn ? htmlspecialchars($_SESSION['fullname']) : '';
 </header>
 
 <main class="main-container">
-
     <section aria-labelledby="cars-heading">
         <h2 id="cars-heading">Our Fleet</h2>
         <p>Choose from our wide range of premium vehicles.</p>
-        
         <div class="cars-grid">
             <?php foreach($cars as $car): ?>
                 <article class="car-card">
                     <img src="<?= htmlspecialchars($car['image']) ?>" alt="<?= htmlspecialchars($car['name']) ?>">
-                    
                     <div class="car-body">
                         <h3><?= htmlspecialchars($car['name']) ?></h3>
                         <p><?= htmlspecialchars($car['desc']) ?></p>
@@ -74,22 +65,14 @@ $fullname = $isLoggedIn ? htmlspecialchars($_SESSION['fullname']) : '';
                             ₱<?= number_format($car['price'], 2) ?> <small style="font-weight:400; font-size: 0.8em;">/day</small>
                         </div>
                     </div>
-
                     <div class="car-footer">
-                        <a class="rent-btn" href="booking.php?car=<?= urlencode($car['slug']) ?>&id=<?= $car['id'] ?>">
-                            Rent Now
-                        </a>
+                        <a class="rent-btn" href="booking.php?car=<?= urlencode($car['slug']) ?>&id=<?= $car['id'] ?>">Rent Now</a>
                     </div>
                 </article>
             <?php endforeach; ?>
         </div>
     </section>
-
 </main>
-
-<footer>
-  © 2025 GingerRental. All rights reserved.
-</footer>
-
+<footer>© 2025 GingerRental. All rights reserved.</footer>
 </body>
 </html>
