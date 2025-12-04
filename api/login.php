@@ -20,7 +20,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Invalid email address.';
     } else {
-        $sql = "SELECT id, fullname, password FROM users WHERE email = ? LIMIT 1";
+        // 1. We now select the 'role' column as well
+        $sql = "SELECT id, fullname, password, role FROM users WHERE email = ? LIMIT 1";
+        
         if ($stmt = $conn->prepare($sql)) {
             $stmt->bind_param('s', $email);
             $stmt->execute();
@@ -32,10 +34,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['fullname'] = $user['fullname'];
                     
-                    // Handle redirect if 'next' was passed
+                    // 2. Check Role and Redirect accordingly
+                    if ($user['role'] === 'admin') {
+                        header('Location: admin.php'); // Admins go here
+                        exit;
+                    }
+
+                    // Standard users go to index or the page they were trying to visit
                     $next = $_GET['next'] ?? 'index.php?login=success';
                     header('Location: ' . $next);
                     exit;
+
                 } else {
                     $error = 'Incorrect password.';
                 }
