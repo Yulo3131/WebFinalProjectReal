@@ -1,5 +1,6 @@
 <?php
-require_once 'config.php'; // 1. Load config FIRST
+// filepath: api/confirm_booking.php
+require_once 'config.php'; // 1. Load config FIRST (Fixes session error)
 session_start();           // 2. Then start session
 
 $title = "Booking Error";
@@ -31,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($messages)) {
+        // Insert into database
         $sql = "INSERT INTO bookings (user_id, car_id, car_name, pickup_date, return_date, location, payment_method, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         if ($stmt = $conn->prepare($sql)) {
