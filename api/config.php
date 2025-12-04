@@ -6,14 +6,24 @@ $port = getenv('DB_PORT');
 $pass = getenv('DB_PASS');
 $db   = getenv('DB_NAME');
 
-// 2. Connect to the database
-$conn = new mysqli($host, $user, $pass, $db, $port);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+// 2. Initialize MySQLi
+$conn = mysqli_init();
+if (!$conn) {
+    die("mysqli_init failed");
 }
 
-// 3. Define Custom Session Handler for Vercel (Serverless)
+// 3. Configure SSL (Required for TiDB Cloud)
+// We set parameters to NULL to tell PHP to use the system's default SSL settings
+// This is necessary because TiDB rejects insecure (non-SSL) connections.
+$conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
+
+// 4. Connect to the database with the SSL flag
+// We use real_connect() instead of new mysqli() to apply the SSL settings before connecting.
+if (!$conn->real_connect($host, $user, $pass, $db, $port, NULL, MYSQLI_CLIENT_SSL)) {
+    die("Connect Error: " . mysqli_connect_error());
+}
+
+// 5. Define Custom Session Handler for Vercel (Serverless)
 // This stores login sessions in your database instead of the file system.
 class DbSessionHandler implements SessionHandlerInterface {
     private $link;
@@ -57,7 +67,7 @@ class DbSessionHandler implements SessionHandlerInterface {
     }
 }
 
-// 4. Set the handler
+// 6. Set the handler
 $handler = new DbSessionHandler($conn);
 session_set_save_handler($handler, true);
 ?>
