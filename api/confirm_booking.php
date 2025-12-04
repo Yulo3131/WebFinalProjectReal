@@ -1,7 +1,6 @@
 <?php
-// filepath: GingerRental/confirm_booking.php
-session_start();
-require_once 'config.php';
+require_once 'config.php'; // 1. Load config FIRST
+session_start();           // 2. Then start session
 
 $title = "Booking Error";
 $header_message = "Booking Failed! ⚠️";
@@ -32,15 +31,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($messages)) {
-        // SQL statement assumes a 'bookings' table exists.
         $sql = "INSERT INTO bookings (user_id, car_id, car_name, pickup_date, return_date, location, payment_method, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         if ($stmt = $conn->prepare($sql)) {
-            // carId is passed as a string/null, assuming database can handle it.
             $stmt->bind_param('ssssssss', $userId, $carId, $carName, $pickupDate, $returnDate, $location, $payment, $status);
 
             if ($stmt->execute()) {
                 $bookingId = $conn->insert_id;
+                
+                // REDIRECT TO PAYMENT IF ONLINE METHOD
+                if ($payment === 'Credit Card' || $payment === 'GCash') {
+                    header("Location: payment.php?booking_id=" . $bookingId);
+                    exit;
+                }
+
                 $success = true;
                 $title = "Booking Confirmed";
                 $header_message = "Booking Confirmed! 🎉";
