@@ -1,14 +1,19 @@
 <?php
 // filepath: api/confirm_booking.php
-require_once 'config.php'; // 1. Load config FIRST (Fixes session error)
+require_once 'config.php'; // 1. Load config FIRST
 session_start();           // 2. Then start session
+
+// Debugging: Enable error reporting to catch issues
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 $title = "Booking Error";
 $header_message = "Booking Failed! ⚠️";
 $messages = [];
 $success = false;
 
-// Check if the user is logged in
+// Check if user is logged in
 if (empty($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
@@ -32,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($messages)) {
-        // Insert into database
+        // SQL to insert booking
         $sql = "INSERT INTO bookings (user_id, car_id, car_name, pickup_date, return_date, location, payment_method, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         if ($stmt = $conn->prepare($sql)) {
@@ -41,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->execute()) {
                 $bookingId = $conn->insert_id;
                 
-                // REDIRECT TO PAYMENT IF ONLINE METHOD
+                // If Online Payment, go to Payment Page
                 if ($payment === 'Credit Card' || $payment === 'GCash') {
                     header("Location: payment.php?booking_id=" . $bookingId);
                     exit;
@@ -53,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messages[] = "Your reservation for the " . htmlspecialchars($carName) . " has been successfully submitted.";
                 $messages[] = "Your reference number is: <strong>" . $bookingId . "</strong>. You will be contacted soon.";
             } else {
-                $messages[] = "Booking failed. Database error.";
+                $messages[] = "Database insert failed: " . $stmt->error;
             }
             $stmt->close();
         } else {
@@ -71,31 +76,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <style>
       main { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
       .confirmation-box {
-        text-align: center;
-        padding: 40px;
-        border-radius: 10px;
-        background: #f7f7f7;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        color: #333;
-        max-width: 600px;
-        width: 90%;
+        text-align: center; padding: 40px; border-radius: 10px;
+        background: #f7f7f7; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        color: #333; max-width: 600px; width: 90%;
       }
-      .success-message {
-        color: #155724;
-        background-color: #d4edda;
-        border-color: #c3e6cb;
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 5px;
-      }
-      .error-message {
-        color: #721c24;
-        background-color: #f8d7da;
-        border-color: #f5c6cb;
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 5px;
-      }
+      .success-message { color: #155724; background-color: #d4edda; border-color: #c3e6cb; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+      .error-message { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
       h1 { margin-bottom: 20px; }
     </style>
 </head>
