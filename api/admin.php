@@ -1,7 +1,6 @@
 <?php
-// filepath: api/admin.php
-require_once 'config.php'; // 1. Load config FIRST
-session_start();           // 2. Then start session
+require_once 'config.php'; // <--- THIS MUST BE LINE 1
+session_start();           // <--- THIS MUST BE LINE 2
 
 // --- 1. SECURITY: CHECK IF ADMIN ---
 if (!isset($_SESSION['user_id'])) {
@@ -22,10 +21,10 @@ if (!$user || $user['role'] !== 'admin') {
     exit;
 }
 
-// --- 2. HANDLE ACTIONS ---
+// --- 2. HANDLE APPROVAL ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'], $_POST['booking_id'])) {
-        $newStatus = $_POST['action'];
+        $newStatus = $_POST['action']; // This will be 'Confirmed' or 'Cancelled'
         $bookingId = intval($_POST['booking_id']);
         
         $updateSql = "UPDATE bookings SET status = ? WHERE id = ?";
@@ -35,11 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $upStmt->close();
         }
     }
+    // Refresh to show the updated list
     header("Location: admin.php");
     exit;
 }
 
 // --- 3. FETCH DATA ---
+// Get all bookings
 $bookings_query = "
     SELECT b.*, u.fullname, u.email, c.name as car_name
     FROM bookings b 
@@ -49,6 +50,7 @@ $bookings_query = "
 ";
 $bookings = $conn->query($bookings_query);
 
+// Get fleet availability
 $fleet_query = "
     SELECT 
         c.*,
@@ -69,86 +71,52 @@ $fleet = $conn->query($fleet_query);
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Admin Panel - GingerRental</title>
+  <title>Admin Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
   <style>
     body { background-color: #f4f6f9; color: #333; }
     .admin-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-    .admin-header { display: flex; justify-content: space-between; align-items: center; background: #1f4e79; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    .admin-header h1 { margin: 0; font-size: 1.5rem; }
-    .admin-header a { color: #ffbb33; text-decoration: none; font-weight: bold; }
-    h2 { color: #1f4e79; border-left: 5px solid #ffbb33; padding-left: 15px; margin-top: 30px;}
-    .fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-    .fleet-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative;}
-    .fleet-card img { width: 100%; height: 160px; object-fit: cover; }
-    .fleet-info { padding: 15px; }
-    .status-badge { position: absolute; top: 10px; right: 10px; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
-    .status-available { background: #28a745; color: white; }
-    .status-rented { background: #dc3545; color: white; }
-    .table-responsive { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    table { width: 100%; border-collapse: collapse; min-width: 900px; }
-    th { background: #e9ecef; color: #555; text-align: left; padding: 15px; font-size: 0.9rem; font-weight: 700; }
-    td { padding: 15px; border-bottom: 1px solid #eee; font-size: 0.95rem; vertical-align: middle; }
-    .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 0.8rem; margin-right: 2px; }
-    .btn-approve { background: #28a745; }
-    .btn-reject { background: #dc3545; }
-    .btn-complete { background: #17a2b8; }
-    .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; background: #1f4e79; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 30px; }
+    
+    /* Status Badges */
+    .badge { padding: 5px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
     .badge-Pending { background: #fff3cd; color: #856404; }
     .badge-Confirmed { background: #d4edda; color: #155724; }
     .badge-Cancelled { background: #f8d7da; color: #721c24; }
     .badge-Completed { background: #cce5ff; color: #004085; }
+
+    /* Action Buttons */
+    .btn-approve { background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+    .btn-reject { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+    
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #e9ecef; }
   </style>
 </head>
 <body>
+
 <div class="admin-container">
     <div class="admin-header">
+        <h1>Admin Dashboard</h1>
         <div>
-            <h1>Admin Dashboard</h1>
-            <small>Logged in as <?php echo htmlspecialchars($user['fullname']); ?></small>
-        </div>
-        <div>
-            <a href="index.php" style="margin-right: 15px;">View Website</a>
-            <a href="logout.php" style="background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px;">Logout</a>
+            <a href="index.php" style="color: #ffbb33; margin-right: 15px;">View Site</a>
+            <a href="logout.php" style="color: #fff; text-decoration: underline;">Logout</a>
         </div>
     </div>
-    <h2>Fleet Status</h2>
-    <div class="fleet-grid">
-        <?php while($car = $fleet->fetch_assoc()): ?>
-            <?php $isRented = !empty($car['current_renter']); ?>
-            <div class="fleet-card">
-                <img src="<?php echo htmlspecialchars($car['image']); ?>" alt="Car">
-                <span class="status-badge <?php echo $isRented ? 'status-rented' : 'status-available'; ?>">
-                    <?php echo $isRented ? 'Rented' : 'Available'; ?>
-                </span>
-                <div class="fleet-info">
-                    <strong><?php echo htmlspecialchars($car['name']); ?></strong>
-                    <?php if ($isRented): ?>
-                        <div style="color: #dc3545; font-size: 0.85rem; margin-top: 5px;">
-                            👤 <?php echo htmlspecialchars($car['current_renter']); ?>
-                        </div>
-                    <?php else: ?>
-                        <div style="color: #28a745; font-size: 0.85rem; margin-top: 5px;">
-                            ✅ Ready for pickup
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        <?php endwhile; ?>
-    </div>
-    <h2>Booking Management</h2>
-    <div class="table-responsive">
+
+    <h2>Booking Requests</h2>
+    <div style="overflow-x:auto;">
         <table>
             <thead>
                 <tr>
                     <th>Ref ID</th>
-                    <th>Customer Details</th>
-                    <th>Vehicle</th>
-                    <th>Rental Dates</th>
-                    <th>Payment</th>
+                    <th>Customer</th>
+                    <th>Car</th>
+                    <th>Dates</th>
                     <th>Status</th>
-                    <th>Actions</th>
+                    <th>Approve / Reject</th>
                 </tr>
             </thead>
             <tbody>
@@ -158,39 +126,40 @@ $fleet = $conn->query($fleet_query);
                             <td>#<?php echo $row['id']; ?></td>
                             <td>
                                 <strong><?php echo htmlspecialchars($row['fullname']); ?></strong><br>
-                                <small style="color:#666;"><?php echo htmlspecialchars($row['email']); ?></small>
+                                <small><?php echo htmlspecialchars($row['email']); ?></small>
                             </td>
                             <td><?php echo htmlspecialchars($row['car_name']); ?></td>
                             <td>
-                                <?php echo date('M d', strtotime($row['pickup_date'])); ?> ➝ 
+                                <?php echo date('M d', strtotime($row['pickup_date'])); ?> - 
                                 <?php echo date('M d', strtotime($row['return_date'])); ?>
                             </td>
-                            <td><strong><?php echo htmlspecialchars($row['payment_method']); ?></strong></td>
-                            <td><span class="badge badge-<?php echo $row['status']; ?>"><?php echo $row['status']; ?></span></td>
+                            <td>
+                                <span class="badge badge-<?php echo $row['status']; ?>">
+                                    <?php echo $row['status']; ?>
+                                </span>
+                            </td>
                             <td>
                                 <?php if ($row['status'] == 'Pending'): ?>
-                                    <form method="POST" style="display:inline;">
+                                    <form method="POST" style="display:inline-flex; gap:5px;">
                                         <input type="hidden" name="booking_id" value="<?php echo $row['id']; ?>">
-                                        <button type="submit" name="action" value="Confirmed" class="btn btn-approve" title="Approve Booking">✓</button>
-                                        <button type="submit" name="action" value="Cancelled" class="btn btn-reject" title="Reject Booking">✕</button>
+                                        <button type="submit" name="action" value="Confirmed" class="btn-approve" title="Approve">✓ Accept</button>
+                                        <button type="submit" name="action" value="Cancelled" class="btn-reject" title="Reject">✕ Reject</button>
                                     </form>
                                 <?php elseif ($row['status'] == 'Confirmed'): ?>
-                                    <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="booking_id" value="<?php echo $row['id']; ?>">
-                                        <button type="submit" name="action" value="Completed" class="btn btn-complete">Mark Returned</button>
-                                    </form>
+                                    <span style="color: green;">Active</span>
                                 <?php else: ?>
-                                    <span style="color:#aaa;">-</span>
+                                    <span style="color: gray;">Closed</span>
                                 <?php endif; ?>
                             </td>
                         </tr>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="7" style="text-align:center; padding: 30px; color: #666;">No booking requests found.</td></tr>
+                    <tr><td colspan="6" style="text-align:center; padding: 2rem;">No bookings found.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
 </div>
+
 </body>
 </html>
