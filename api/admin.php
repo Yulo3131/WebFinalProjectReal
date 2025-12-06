@@ -1,6 +1,6 @@
 <?php
-require_once 'config.php'; // <--- THIS MUST BE LINE 1
-session_start();           // <--- THIS MUST BE LINE 2
+require_once 'config.php'; // <--- THIS MUST BE FIRST
+session_start();           // <--- THIS MUST BE SECOND
 
 // --- 1. SECURITY: CHECK IF ADMIN ---
 if (!isset($_SESSION['user_id'])) {
@@ -21,10 +21,10 @@ if (!$user || $user['role'] !== 'admin') {
     exit;
 }
 
-// --- 2. HANDLE APPROVAL ACTIONS ---
+// --- 2. HANDLE ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'], $_POST['booking_id'])) {
-        $newStatus = $_POST['action']; // This will be 'Confirmed' or 'Cancelled'
+        $newStatus = $_POST['action'];
         $bookingId = intval($_POST['booking_id']);
         
         $updateSql = "UPDATE bookings SET status = ? WHERE id = ?";
@@ -34,37 +34,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $upStmt->close();
         }
     }
-    // Refresh to show the updated list
     header("Location: admin.php");
     exit;
 }
 
 // --- 3. FETCH DATA ---
-// Get all bookings
-$bookings_query = "
-    SELECT b.*, u.fullname, u.email, c.name as car_name
-    FROM bookings b 
-    JOIN users u ON b.user_id = u.id 
-    JOIN cars c ON b.car_id = c.id
-    ORDER BY b.created_at DESC
-";
+$bookings_query = "SELECT b.*, u.fullname, u.email, c.name as car_name FROM bookings b JOIN users u ON b.user_id = u.id JOIN cars c ON b.car_id = c.id ORDER BY b.created_at DESC";
 $bookings = $conn->query($bookings_query);
 
-// Get fleet availability
-$fleet_query = "
-    SELECT 
-        c.*,
-        (
-            SELECT CONCAT(u.fullname, ' (until ', DATE_FORMAT(b.return_date, '%M %d'), ')')
-            FROM bookings b 
-            JOIN users u ON b.user_id = u.id
-            WHERE b.car_id = c.id 
-            AND b.status = 'Confirmed' 
-            AND CURDATE() BETWEEN b.pickup_date AND b.return_date
-            LIMIT 1
-        ) as current_renter
-    FROM cars c
-";
+$fleet_query = "SELECT c.*, (SELECT CONCAT(u.fullname, ' (until ', DATE_FORMAT(b.return_date, '%M %d'), ')') FROM bookings b JOIN users u ON b.user_id = u.id WHERE b.car_id = c.id AND b.status = 'Confirmed' AND CURDATE() BETWEEN b.pickup_date AND b.return_date LIMIT 1) as current_renter FROM cars c";
 $fleet = $conn->query($fleet_query);
 ?>
 <!DOCTYPE html>
@@ -78,18 +56,13 @@ $fleet = $conn->query($fleet_query);
     body { background-color: #f4f6f9; color: #333; }
     .admin-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
     .admin-header { display: flex; justify-content: space-between; align-items: center; background: #1f4e79; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 30px; }
-    
-    /* Status Badges */
     .badge { padding: 5px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
     .badge-Pending { background: #fff3cd; color: #856404; }
     .badge-Confirmed { background: #d4edda; color: #155724; }
     .badge-Cancelled { background: #f8d7da; color: #721c24; }
     .badge-Completed { background: #cce5ff; color: #004085; }
-
-    /* Action Buttons */
     .btn-approve { background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
     .btn-reject { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-    
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
     th { background: #e9ecef; }
@@ -100,10 +73,7 @@ $fleet = $conn->query($fleet_query);
 <div class="admin-container">
     <div class="admin-header">
         <h1>Admin Dashboard</h1>
-        <div>
-            <a href="index.php" style="color: #ffbb33; margin-right: 15px;">View Site</a>
-            <a href="logout.php" style="color: #fff; text-decoration: underline;">Logout</a>
-        </div>
+        <div><a href="index.php" style="color: #ffbb33; margin-right: 15px;">View Site</a><a href="logout.php" style="color: #fff; text-decoration: underline;">Logout</a></div>
     </div>
 
     <h2>Booking Requests</h2>
@@ -111,12 +81,7 @@ $fleet = $conn->query($fleet_query);
         <table>
             <thead>
                 <tr>
-                    <th>Ref ID</th>
-                    <th>Customer</th>
-                    <th>Car</th>
-                    <th>Dates</th>
-                    <th>Status</th>
-                    <th>Approve / Reject</th>
+                    <th>Ref ID</th><th>Customer</th><th>Car</th><th>Dates</th><th>Status</th><th>Approve / Reject</th>
                 </tr>
             </thead>
             <tbody>
@@ -124,31 +89,19 @@ $fleet = $conn->query($fleet_query);
                     <?php while($row = $bookings->fetch_assoc()): ?>
                         <tr>
                             <td>#<?php echo $row['id']; ?></td>
-                            <td>
-                                <strong><?php echo htmlspecialchars($row['fullname']); ?></strong><br>
-                                <small><?php echo htmlspecialchars($row['email']); ?></small>
-                            </td>
+                            <td><strong><?php echo htmlspecialchars($row['fullname']); ?></strong><br><small><?php echo htmlspecialchars($row['email']); ?></small></td>
                             <td><?php echo htmlspecialchars($row['car_name']); ?></td>
-                            <td>
-                                <?php echo date('M d', strtotime($row['pickup_date'])); ?> - 
-                                <?php echo date('M d', strtotime($row['return_date'])); ?>
-                            </td>
-                            <td>
-                                <span class="badge badge-<?php echo $row['status']; ?>">
-                                    <?php echo $row['status']; ?>
-                                </span>
-                            </td>
+                            <td><?php echo date('M d', strtotime($row['pickup_date'])); ?> - <?php echo date('M d', strtotime($row['return_date'])); ?></td>
+                            <td><span class="badge badge-<?php echo $row['status']; ?>"><?php echo $row['status']; ?></span></td>
                             <td>
                                 <?php if ($row['status'] == 'Pending'): ?>
                                     <form method="POST" style="display:inline-flex; gap:5px;">
                                         <input type="hidden" name="booking_id" value="<?php echo $row['id']; ?>">
-                                        <button type="submit" name="action" value="Confirmed" class="btn-approve" title="Approve">✓ Accept</button>
-                                        <button type="submit" name="action" value="Cancelled" class="btn-reject" title="Reject">✕ Reject</button>
+                                        <button type="submit" name="action" value="Confirmed" class="btn-approve">✓ Accept</button>
+                                        <button type="submit" name="action" value="Cancelled" class="btn-reject">✕ Reject</button>
                                     </form>
-                                <?php elseif ($row['status'] == 'Confirmed'): ?>
-                                    <span style="color: green;">Active</span>
                                 <?php else: ?>
-                                    <span style="color: gray;">Closed</span>
+                                    <?php echo $row['status']; ?>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -160,6 +113,5 @@ $fleet = $conn->query($fleet_query);
         </table>
     </div>
 </div>
-
 </body>
 </html>
