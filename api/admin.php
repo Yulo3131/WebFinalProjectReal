@@ -38,18 +38,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// --- 3. FETCH DATA (FIXED QUERY) ---
-// We removed the 'JOIN cars' because the booking table already has the car name.
-// We used 'LEFT JOIN users' so bookings show up even if the user was deleted.
-$bookings_query = "
+// --- 3. FETCH BOOKING REQUESTS (Pending, Cancelled, Completed) ---
+$requests_query = "
     SELECT b.*, u.fullname, u.email
     FROM bookings b 
     LEFT JOIN users u ON b.user_id = u.id 
-    ORDER BY b.created_at DESC
+    ORDER BY FIELD(b.status, 'Pending', 'Confirmed', 'Completed', 'Cancelled'), b.created_at DESC
 ";
-$bookings = $conn->query($bookings_query);
+$requests = $conn->query($requests_query);
 
-// Fleet query removed or simplified since we don't depend on a cars table for now
+// --- 4. FETCH ACTIVE FLEET (Confirmed / Active Rentals) ---
+// This gets all bookings that are currently 'Confirmed'
+$active_query = "
+    SELECT b.*, u.fullname, c.image
+    FROM bookings b 
+    LEFT JOIN users u ON b.user_id = u.id
+    LEFT JOIN cars c ON b.car_id = c.id
+    WHERE b.status = 'Confirmed'
+    ORDER BY b.return_date ASC
+";
+$active_rentals = $conn->query($active_query);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -71,7 +79,17 @@ $bookings = $conn->query($bookings_query);
 
     .btn-approve { background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
     .btn-reject { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-    
+    .btn-return { background: #17a2b8; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+
+    /* Active Fleet Grid */
+    .fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-bottom: 40px; }
+    .fleet-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: relative; border-left: 5px solid #28a745; }
+    .fleet-card img { width: 100%; height: 150px; object-fit: cover; background: #eee; }
+    .fleet-info { padding: 15px; }
+    .fleet-info h3 { margin: 0 0 5px 0; color: #1f4e79; font-size: 1.1rem; }
+    .fleet-info p { margin: 0; font-size: 0.9rem; color: #555; }
+    .rented-badge { position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
     th { background: #e9ecef; }
@@ -88,7 +106,39 @@ $bookings = $conn->query($bookings_query);
         </div>
     </div>
 
-    <h2>Booking Requests</h2>
+    <h2>Active Rentals (Fleet Status)</h2>
+    
+    <?php if ($active_rentals && $active_rentals->num_rows > 0): ?>
+        <div class="fleet-grid">
+            <?php while($car = $active_rentals->fetch_assoc()): ?>
+                <div class="fleet-card">
+                    <span class="rented-badge">ON RENT</span>
+                    <?php if (!empty($car['image'])): ?>
+                        <img src="<?php echo htmlspecialchars($car['image']); ?>" alt="Car">
+                    <?php else: ?>
+                        <div style="height:150px; background: #ddd; display:flex; align-items:center; justify-content:center; color:#777;">
+                            No Image
+                        </div>
+                    <?php endif; ?>
+                    
+                    <div class="fleet-info">
+                        <h3><?php echo htmlspecialchars($car['car_name']); ?></h3>
+                        <p><strong>Renter:</strong> <?php echo htmlspecialchars($car['fullname']); ?></p>
+                        <p><strong>Return:</strong> <?php echo date('M d, Y', strtotime($car['return_date'])); ?></p>
+                        <p style="margin-top:8px; font-size:0.85rem; color:#888;">
+                            Ref ID: #<?php echo $car['id']; ?>
+                        </p>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        </div>
+    <?php else: ?>
+        <div style="background:white; padding:20px; border-radius:8px; margin-bottom:30px; text-align:center; color:#666;">
+            No cars are currently being rented. Approve a booking below to see it here!
+        </div>
+    <?php endif; ?>
+
+    <h2>Booking Management</h2>
     <div style="overflow-x:auto;">
         <table>
             <thead>
@@ -98,16 +148,16 @@ $bookings = $conn->query($bookings_query);
                     <th>Car</th>
                     <th>Dates</th>
                     <th>Status</th>
-                    <th>Approve / Reject</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <?php if ($bookings && $bookings->num_rows > 0): ?>
-                    <?php while($row = $bookings->fetch_assoc()): ?>
+                <?php if ($requests && $requests->num_rows > 0): ?>
+                    <?php while($row = $requests->fetch_assoc()): ?>
                         <tr>
                             <td>#<?php echo $row['id']; ?></td>
                             <td>
-                                <strong><?php echo htmlspecialchars($row['fullname'] ?? 'Unknown User'); ?></strong><br>
+                                <strong><?php echo htmlspecialchars($row['fullname'] ?? 'Guest'); ?></strong><br>
                                 <small><?php echo htmlspecialchars($row['email'] ?? '-'); ?></small>
                             </td>
                             <td><?php echo htmlspecialchars($row['car_name']); ?></td>
@@ -127,8 +177,13 @@ $bookings = $conn->query($bookings_query);
                                         <button type="submit" name="action" value="Confirmed" class="btn-approve" title="Approve">✓ Accept</button>
                                         <button type="submit" name="action" value="Cancelled" class="btn-reject" title="Reject">✕ Reject</button>
                                     </form>
+                                <?php elseif ($row['status'] == 'Confirmed'): ?>
+                                    <form method="POST">
+                                        <input type="hidden" name="booking_id" value="<?php echo $row['id']; ?>">
+                                        <button type="submit" name="action" value="Completed" class="btn-return" title="Mark Returned">⟲ Return Car</button>
+                                    </form>
                                 <?php else: ?>
-                                    <?php echo $row['status']; ?>
+                                    <span style="color:#aaa;">-</span>
                                 <?php endif; ?>
                             </td>
                         </tr>
