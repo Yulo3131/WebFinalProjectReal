@@ -1,28 +1,23 @@
 <?php
 // filepath: api/config.php
 
-// 1. Get credentials from Environment Variables
 $host = getenv('DB_HOST');
 $user = getenv('DB_USER');
 $port = getenv('DB_PORT');
 $pass = getenv('DB_PASS');
 $db   = getenv('DB_NAME');
 
-// 2. Initialize MySQLi
 $conn = mysqli_init();
 if (!$conn) {
     die("mysqli_init failed");
 }
 
-// 3. Configure SSL (Required for TiDB/Serverless databases)
 $conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
 
-// 4. Connect securely
 if (!$conn->real_connect($host, $user, $pass, $db, $port, NULL, MYSQLI_CLIENT_SSL)) {
     die("Connect Error: " . mysqli_connect_error());
 }
 
-// 5. Custom Session Handler (Database-backed sessions)
 class DbSessionHandler implements SessionHandlerInterface {
     private $link;
 
@@ -67,4 +62,4 @@ class DbSessionHandler implements SessionHandlerInterface {
 
 $handler = new DbSessionHandler($conn);
 session_set_save_handler($handler, true);
-?>
+// NO CLOSING TAG HERE
