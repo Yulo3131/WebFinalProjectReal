@@ -1,5 +1,4 @@
 <?php
-// filepath: api/confirm_booking.php
 require_once 'config.php'; // <--- LINE 1: Load Database first
 session_start();           // <--- LINE 2: Start Session
 
@@ -8,7 +7,6 @@ $header_message = "Booking Failed! ⚠️";
 $messages = [];
 $success = false;
 
-// Check Login
 if (empty($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
@@ -22,9 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $returnDate = $_POST['return_date'] ?? '';
     $location = $_POST['location'] ?? '';
     $payment = $_POST['payment'] ?? '';
-    $status = 'Pending'; // <--- Set status to Pending for Admin Approval
+    $status = 'Pending';
 
-    // Validate
     if (empty($carName) || empty($pickupDate) || empty($returnDate) || empty($location) || empty($payment)) {
         $messages[] = "Please fill out all required fields.";
     }
@@ -34,21 +31,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($stmt = $conn->prepare($sql)) {
             $stmt->bind_param('ssssssss', $userId, $carId, $carName, $pickupDate, $returnDate, $location, $payment, $status);
-
             if ($stmt->execute()) {
                 $bookingId = $conn->insert_id;
-
-                // Handle Online Payment Redirects
                 if ($payment === 'Credit Card' || $payment === 'GCash') {
                     header("Location: payment.php?booking_id=" . $bookingId);
                     exit;
                 }
-
                 $success = true;
                 $title = "Booking Request Sent";
                 $header_message = "Request Sent! ⏳";
-                $messages[] = "Your booking request for the " . htmlspecialchars($carName) . " has been sent.";
-                $messages[] = "Status: <strong>Pending Approval</strong>. The admin will review your request shortly.";
+                $messages[] = "Your booking request has been sent for approval.";
             } else {
                 $messages[] = "Database error: " . $stmt->error;
             }
