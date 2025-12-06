@@ -21,7 +21,20 @@ if (!$user || $user['role'] !== 'admin') {
     exit;
 }
 
-// --- 2. HANDLE APPROVAL ACTIONS ---
+// --- 2. CAR DATA (Hardcoded to match booking.php) ---
+// This ensures images show up even if your database 'cars' table is empty.
+$car_db = [
+    1 => ['name' => 'Toyota Vios', 'image' => 'https://imgcdn.zigwheels.ph/large/gallery/exterior/30/1943/toyota-vios-front-angle-low-view-945824.jpg'],
+    2 => ['name' => 'Honda CR-V', 'image' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThGoeYHIKudbhxg34cykLXg4_C7A1UolQZKw&s'],
+    3 => ['name' => 'Nissan Urvan', 'image' => 'https://imgcdn.zigwheels.ph/large/gallery/exterior/25/717/nissan-nv350-urvan-front-angle-low-view-612406.jpg'],
+    4 => ['name' => 'Toyota Innova', 'image' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLhOIJz6rXbQ9h2b8ZCY12zSlaiUAcEpbluQ&s'],
+    5 => ['name' => 'Mitsubishi Montero Sport', 'image' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm_zSicaU3zAvLnhn--tc6q32ZP8T4Myd-5A&s'],
+    6 => ['name' => 'Suzuki Ertiga', 'image' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTA1GNFpWalPA97sUepRUwH6DRhuvTFRkfJUg&s'],
+    7 => ['name' => 'Ford Ranger', 'image' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm_zSicaU3zAvLnhn--tc6q32ZP8T4Myd-5A&s'],
+    8 => ['name' => 'Hyundai Accent', 'image' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThGoeYHIKudbhxg34cykLXg4_C7A1UolQZKw&s']
+];
+
+// --- 3. HANDLE APPROVAL ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'], $_POST['booking_id'])) {
         $newStatus = $_POST['action'];
@@ -38,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// --- 3. FETCH BOOKING REQUESTS (Pending, Cancelled, Completed) ---
+// --- 4. FETCH BOOKING REQUESTS (All History) ---
 $requests_query = "
     SELECT b.*, u.fullname, u.email
     FROM bookings b 
@@ -47,13 +60,11 @@ $requests_query = "
 ";
 $requests = $conn->query($requests_query);
 
-// --- 4. FETCH ACTIVE FLEET (Confirmed / Active Rentals) ---
-// This gets all bookings that are currently 'Confirmed'
+// --- 5. FETCH ACTIVE RENTALS (Confirmed Only) ---
 $active_query = "
-    SELECT b.*, u.fullname, c.image
+    SELECT b.*, u.fullname
     FROM bookings b 
     LEFT JOIN users u ON b.user_id = u.id
-    LEFT JOIN cars c ON b.car_id = c.id
     WHERE b.status = 'Confirmed'
     ORDER BY b.return_date ASC
 ";
@@ -106,27 +117,33 @@ $active_rentals = $conn->query($active_query);
         </div>
     </div>
 
-    <h2>Active Rentals (Fleet Status)</h2>
+    <h2>Reserved Cars (Active Rentals)</h2>
     
     <?php if ($active_rentals && $active_rentals->num_rows > 0): ?>
         <div class="fleet-grid">
-            <?php while($car = $active_rentals->fetch_assoc()): ?>
+            <?php while($row = $active_rentals->fetch_assoc()): ?>
+                <?php 
+                    // Use Hardcoded Image if available, otherwise fallback
+                    $carId = $row['car_id'];
+                    $imgSrc = $car_db[$carId]['image'] ?? ''; 
+                ?>
                 <div class="fleet-card">
-                    <span class="rented-badge">ON RENT</span>
-                    <?php if (!empty($car['image'])): ?>
-                        <img src="<?php echo htmlspecialchars($car['image']); ?>" alt="Car">
+                    <span class="rented-badge">CONFIRMED</span>
+                    
+                    <?php if (!empty($imgSrc)): ?>
+                        <img src="<?php echo htmlspecialchars($imgSrc); ?>" alt="Car">
                     <?php else: ?>
                         <div style="height:150px; background: #ddd; display:flex; align-items:center; justify-content:center; color:#777;">
-                            No Image
+                            No Image Found
                         </div>
                     <?php endif; ?>
                     
                     <div class="fleet-info">
-                        <h3><?php echo htmlspecialchars($car['car_name']); ?></h3>
-                        <p><strong>Renter:</strong> <?php echo htmlspecialchars($car['fullname']); ?></p>
-                        <p><strong>Return:</strong> <?php echo date('M d, Y', strtotime($car['return_date'])); ?></p>
+                        <h3><?php echo htmlspecialchars($row['car_name']); ?></h3>
+                        <p><strong>Customer:</strong> <?php echo htmlspecialchars($row['fullname']); ?></p>
+                        <p><strong>Return:</strong> <?php echo date('M d, Y', strtotime($row['return_date'])); ?></p>
                         <p style="margin-top:8px; font-size:0.85rem; color:#888;">
-                            Ref ID: #<?php echo $car['id']; ?>
+                            Ref ID: #<?php echo $row['id']; ?>
                         </p>
                     </div>
                 </div>
@@ -134,7 +151,7 @@ $active_rentals = $conn->query($active_query);
         </div>
     <?php else: ?>
         <div style="background:white; padding:20px; border-radius:8px; margin-bottom:30px; text-align:center; color:#666;">
-            No cars are currently being rented. Approve a booking below to see it here!
+            No confirmed reservations yet. Accept a booking request below!
         </div>
     <?php endif; ?>
 
