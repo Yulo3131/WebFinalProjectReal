@@ -1,4 +1,5 @@
 <?php
+// filepath: api/admin.php
 require_once 'config.php'; // 1. Load config FIRST
 session_start();           // 2. Then start session
 
