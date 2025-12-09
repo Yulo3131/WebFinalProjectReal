@@ -1,9 +1,8 @@
 <?php
 // filepath: api/booking.php
-require_once 'config.php'; // 1. Load config FIRST
-session_start();           // 2. Then start session
+require_once 'config.php'; 
+session_start();
 
-// 1. Enforce Login
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php?next=" . urlencode($_SERVER['REQUEST_URI']));
     exit;
@@ -11,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 
 $fullname = htmlspecialchars($_SESSION['fullname']);
 
-// 2. Car Data
+// Car Data (Same as before)
 $cars = [
     ['id'=>1,'slug'=>'toyota-vios','name'=>'Toyota Vios','image'=>'https://imgcdn.zigwheels.ph/large/gallery/exterior/30/1943/toyota-vios-front-angle-low-view-945824.jpg','price'=>1500,'desc'=>'Reliable sedan, great on gas and comfortable for city trips.'],
     ['id'=>2,'slug'=>'honda-crv','name'=>'Honda CR-V','image'=>'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThGoeYHIKudbhxg34cykLXg4_C7A1UolQZKw&s','price'=>3200,'desc'=>'Spacious SUV for family trips with modern features.'],
@@ -23,24 +22,17 @@ $cars = [
     ['id'=>8,'slug'=>'hyundai-accent','name'=>'Hyundai Accent','image'=>'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThGoeYHIKudbhxg34cykLXg4_C7A1UolQZKw&s','price'=>1300,'desc'=>'Compact and fuel-efficient, great for city driving.']
 ];
 
-// 3. Identify Selected Car
 $selectedSlug = $_GET['car'] ?? '';
 $selectedId = $_GET['id'] ?? '';
 $selectedCar = null;
 
 if ($selectedId) {
     foreach ($cars as $c) {
-        if ($c['id'] == $selectedId) {
-            $selectedCar = $c;
-            break;
-        }
+        if ($c['id'] == $selectedId) { $selectedCar = $c; break; }
     }
 } elseif ($selectedSlug) {
     foreach ($cars as $c) {
-        if ($c['slug'] === $selectedSlug) {
-            $selectedCar = $c;
-            break;
-        }
+        if ($c['slug'] === $selectedSlug) { $selectedCar = $c; break; }
     }
 }
 ?>
@@ -115,7 +107,6 @@ if ($selectedId) {
                     <select id="payment" name="payment" required>
                         <option value="" disabled selected>Select an option</option>
                         <option value="Cash on Pickup">Cash on Pickup</option>
-                        <option value="Credit Card">Credit Card</option>
                         <option value="GCash">GCash / E-wallet</option>
                     </select>
                     <button type="submit" class="btn-confirm">Confirm Booking</button>
