@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 
 $fullname = htmlspecialchars($_SESSION['fullname']);
 
-// Car Data (Same as before)
+// Car Data
 $cars = [
     ['id'=>1,'slug'=>'toyota-vios','name'=>'Toyota Vios','image'=>'https://imgcdn.zigwheels.ph/large/gallery/exterior/30/1943/toyota-vios-front-angle-low-view-945824.jpg','price'=>1500,'desc'=>'Reliable sedan, great on gas and comfortable for city trips.'],
     ['id'=>2,'slug'=>'honda-crv','name'=>'Honda CR-V','image'=>'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThGoeYHIKudbhxg34cykLXg4_C7A1UolQZKw&s','price'=>3200,'desc'=>'Spacious SUV for family trips with modern features.'],
@@ -60,6 +60,11 @@ if ($selectedId) {
       .btn-confirm { background: linear-gradient(90deg, #1f4e79, #16395c); color: #fff; width: 100%; border: none; padding: 14px; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: transform 0.2s; }
       .btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(31, 78, 121, 0.3); }
       .no-car { text-align: center; padding: 4rem; color: #666; }
+      
+      /* New Styles for Inline QR */
+      .gcash-section { display: none; background: #e8f4fd; padding: 15px; border-radius: 8px; border: 2px dashed #007bff; margin-bottom: 1.5rem; text-align: center; }
+      .gcash-section img { width: 180px; height: 180px; object-fit: contain; margin-bottom: 10px; }
+      .gcash-info { font-size: 0.9rem; color: #004085; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -94,7 +99,7 @@ if ($selectedId) {
             </div>
             <div class="booking-form-box">
                 <h3>Finalize Reservation</h3>
-                <form action="confirm_booking.php" method="POST">
+                <form action="confirm_booking.php" method="POST" id="bookingForm">
                     <input type="hidden" name="car_id" value="<?= $selectedCar['id'] ?>">
                     <input type="hidden" name="car" value="<?= htmlspecialchars($selectedCar['name']) ?>">
                     <label for="pickup_date">Pick-up Date</label>
@@ -103,12 +108,24 @@ if ($selectedId) {
                     <input type="date" id="return_date" name="return_date" required min="<?= date('Y-m-d') ?>">
                     <label for="location">Pick-up Location</label>
                     <input type="text" id="location" name="location" placeholder="e.g. NAIA Terminal 3, Makati City" required>
+                    
                     <label for="payment">Payment Method</label>
-                    <select id="payment" name="payment" required>
+                    <select id="payment" name="payment" required onchange="togglePayment()">
                         <option value="" disabled selected>Select an option</option>
                         <option value="Cash on Pickup">Cash on Pickup</option>
                         <option value="GCash">GCash / E-wallet</option>
                     </select>
+
+                    <div id="gcashSection" class="gcash-section">
+                        <div class="gcash-info">Scan to Pay via GCash</div>
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" alt="GCash QR">
+                        <div style="font-weight:bold; color:#1f4e79;">GingerRental Corp</div>
+                        <div style="margin-bottom:10px;">0917 123 4567</div>
+                        
+                        <label for="ref_no" style="text-align:left;">Reference Number</label>
+                        <input type="text" id="ref_no" name="ref_no" placeholder="Enter Ref No. from Receipt">
+                    </div>
+
                     <button type="submit" class="btn-confirm">Confirm Booking</button>
                 </form>
             </div>
@@ -122,6 +139,24 @@ if ($selectedId) {
         </div>
     <?php endif; ?>
 </main>
+
+<script>
+function togglePayment() {
+    const payment = document.getElementById('payment').value;
+    const gcashDiv = document.getElementById('gcashSection');
+    const refInput = document.getElementById('ref_no');
+
+    if (payment === 'GCash') {
+        gcashDiv.style.display = 'block';
+        refInput.setAttribute('required', 'required');
+    } else {
+        gcashDiv.style.display = 'none';
+        refInput.removeAttribute('required');
+        refInput.value = ''; // Clear value if switched back
+    }
+}
+</script>
+
 <footer>© 2025 GingerRental. All rights reserved.</footer>
 </body>
 </html>
