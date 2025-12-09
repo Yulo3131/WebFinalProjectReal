@@ -1,6 +1,6 @@
 <?php
-require_once 'config.php'; // <--- LINE 1: Load Database first
-session_start();           // <--- LINE 2: Start Session
+require_once 'config.php';
+session_start();
 
 $title = "Booking Error";
 $header_message = "Booking Failed! ⚠️";
@@ -33,10 +33,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param('ssssssss', $userId, $carId, $carName, $pickupDate, $returnDate, $location, $payment, $status);
             if ($stmt->execute()) {
                 $bookingId = $conn->insert_id;
-                if ($payment === 'Credit Card' || $payment === 'GCash') {
+                
+                // ONLY GCash goes to payment page now
+                if ($payment === 'GCash') {
                     header("Location: payment.php?booking_id=" . $bookingId);
                     exit;
                 }
+                
                 $success = true;
                 $title = "Booking Request Sent";
                 $header_message = "Request Sent! ⏳";
