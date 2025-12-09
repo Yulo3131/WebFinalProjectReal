@@ -84,8 +84,7 @@ $fullname = $isLoggedIn ? htmlspecialchars($_SESSION['fullname']) : '';
     <p>Premium cars. Unforgettable memories. The freedom to explore.</p>
     <div class="hero-buttons">
       <a href="cars.php" class="cta-button">Browse Cars</a>
-      <a href="booking.php" class="cta-outline">Reserve Now</a>
-    </div>
+      </div>
   </div>
 </section>
 
